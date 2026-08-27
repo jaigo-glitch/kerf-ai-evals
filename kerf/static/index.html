@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="KERF evaluates whether AI agents can answer questions from business data correctly, safely, and consistently.">
+  <title>KERF — AI reliability infrastructure</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="KERF home">
+      <span class="brand-mark">K</span><span>KERF</span>
+    </a>
+    <nav aria-label="Primary">
+      <a href="#lab">Lab</a>
+      <a href="#cases">Cases</a>
+      <a href="#history">History</a>
+      <a href="/docs" target="_blank" rel="noreferrer">API</a>
+    </nav>
+    <div class="status-pill"><span id="healthDot"></span><span id="healthText">Starting</span></div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="eyebrow">AI RELIABILITY INFRASTRUCTURE / V0.1.0</div>
+      <h1>Measure what the<br><span>model misses.</span></h1>
+      <p>KERF tests whether AI agents can query business data safely, calculate the right answer, and remain reliable across model releases.</p>
+      <div class="hero-actions">
+        <a class="button primary" href="#lab">Run the suite</a>
+        <a class="button ghost" href="#cases">Inspect 20 cases</a>
+      </div>
+      <div class="hero-proof">
+        <div><b>20</b><span>versioned evals</span></div>
+        <div><b>3×</b><span>SQL safety layers</span></div>
+        <div><b>100%</b><span>synthetic data</span></div>
+      </div>
+    </section>
+
+    <section class="section metrics-section" aria-labelledby="tracker-title">
+      <div class="section-heading">
+        <div><span class="section-index">01</span><h2 id="tracker-title">Evidence tracker</h2></div>
+        <p>Only completed activity is counted. Zero means zero.</p>
+      </div>
+      <div id="metricsGrid" class="metrics-grid" aria-live="polite"></div>
+    </section>
+
+    <section id="lab" class="section lab-section" aria-labelledby="lab-title">
+      <div class="section-heading">
+        <div><span class="section-index">02</span><h2 id="lab-title">Evaluation lab</h2></div>
+        <p>Execute all cases against a deterministic fixture or a live model.</p>
+      </div>
+      <div class="lab-grid">
+        <div class="run-panel panel">
+          <div class="panel-kicker">NEW RUN</div>
+          <label for="provider">Provider</label>
+          <select id="provider">
+            <option value="fixture">Fixture — free product test</option>
+            <option value="openai">OpenAI — live API</option>
+          </select>
+          <label for="model">Model ID</label>
+          <input id="model" value="kerf-fixture-v1" autocomplete="off">
+          <div id="liveNotice" class="notice">
+            Fixture runs prove the evaluation system—not model quality. Live runs require an environment API key.
+          </div>
+          <button id="runButton" class="button primary full">Run all 20 evaluations</button>
+          <div id="runProgress" class="run-progress" hidden>
+            <div class="spinner"></div>
+            <div><b>Evaluation running</b><span>Do not close this page.</span></div>
+          </div>
+        </div>
+        <div id="latestRun" class="result-panel panel empty-state">
+          <span class="empty-glyph">Ø</span>
+          <h3>No run selected</h3>
+          <p>Complete a run or choose one from the history below to inspect its evidence.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="cases" class="section" aria-labelledby="cases-title">
+      <div class="section-heading">
+        <div><span class="section-index">03</span><h2 id="cases-title">Evaluation cases</h2></div>
+        <div class="filter-row" role="group" aria-label="Filter evaluation cases">
+          <button class="filter active" data-filter="all">All</button>
+          <button class="filter" data-filter="revenue">Revenue</button>
+          <button class="filter" data-filter="customers">Customers</button>
+          <button class="filter" data-filter="sales">Sales</button>
+          <button class="filter" data-filter="operations">Operations</button>
+        </div>
+      </div>
+      <div id="caseGrid" class="case-grid"></div>
+    </section>
+
+    <section id="history" class="section" aria-labelledby="history-title">
+      <div class="section-heading">
+        <div><span class="section-index">04</span><h2 id="history-title">Run history</h2></div>
+        <button id="compareButton" class="button ghost small" disabled>Compare selected</button>
+      </div>
+      <div class="table-shell">
+        <table>
+          <thead><tr><th></th><th>Run</th><th>Provider / Model</th><th>Score</th><th>Passed</th><th>Latency</th><th>Cost</th><th>Date</th></tr></thead>
+          <tbody id="runsBody"><tr><td colspan="8" class="table-empty">No completed runs yet.</td></tr></tbody>
+        </table>
+      </div>
+      <div id="comparison" class="comparison" hidden></div>
+    </section>
+
+    <section class="section feedback-section" aria-labelledby="feedback-title">
+      <div class="section-heading">
+        <div><span class="section-index">05</span><h2 id="feedback-title">Beta evidence</h2></div>
+        <p>Real testers only. Demo identities are never added to the count.</p>
+      </div>
+      <form id="feedbackForm" class="feedback-form panel">
+        <div><label for="testerAlias">Name or alias</label><input id="testerAlias" required minlength="2" maxlength="80" placeholder="Beta tester 01"></div>
+        <div><label for="testerRole">Role</label><input id="testerRole" required minlength="2" maxlength="100" placeholder="Data analyst"></div>
+        <div><label for="rating">Rating</label><select id="rating"><option value="5">5 — Excellent</option><option value="4">4 — Good</option><option value="3">3 — Neutral</option><option value="2">2 — Weak</option><option value="1">1 — Poor</option></select></div>
+        <div class="wide"><label for="feedback">What worked, and what failed?</label><textarea id="feedback" required minlength="10" maxlength="3000" placeholder="Be specific. This becomes product evidence."></textarea></div>
+        <label class="checkbox wide"><input id="consent" type="checkbox"> Allow an attributed quote in the public case study</label>
+        <div class="wide form-footer"><span id="feedbackStatus"></span><button class="button primary" type="submit">Record feedback</button></div>
+      </form>
+    </section>
+  </main>
+
+  <footer>
+    <span>KERF / PRE-LAUNCH MVP</span>
+    <span>All company records are synthetic. Live model results are labeled.</span>
+  </footer>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
+

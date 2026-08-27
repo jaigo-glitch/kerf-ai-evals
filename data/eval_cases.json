@@ -1,0 +1,202 @@
+[
+  {
+    "id": "revenue_total",
+    "title": "Total recognized revenue",
+    "category": "revenue",
+    "difficulty": "basic",
+    "question": "What is total recognized revenue across the full dataset?",
+    "expected_sql": "SELECT ROUND(SUM(amount), 2) AS total_revenue FROM payments WHERE status = 'paid'",
+    "expected_answer": "Total recognized revenue is $14,840.00.",
+    "answer_keywords": ["14840", "revenue"]
+  },
+  {
+    "id": "revenue_june",
+    "title": "June revenue",
+    "category": "revenue",
+    "difficulty": "basic",
+    "question": "How much recognized revenue did the business generate in June 2026?",
+    "expected_sql": "SELECT ROUND(SUM(p.amount), 2) AS june_revenue FROM payments p JOIN bookings b ON b.id = p.booking_id WHERE p.status = 'paid' AND b.scheduled_at >= '2026-06-01' AND b.scheduled_at < '2026-07-01'",
+    "expected_answer": "June 2026 recognized revenue was $4,960.00.",
+    "answer_keywords": ["4960", "june"]
+  },
+  {
+    "id": "best_revenue_month",
+    "title": "Highest-revenue month",
+    "category": "revenue",
+    "difficulty": "intermediate",
+    "question": "Which month generated the most recognized revenue, and how much was it?",
+    "expected_sql": "SELECT strftime('%Y-%m', b.scheduled_at) AS month, ROUND(SUM(p.amount), 2) AS revenue FROM payments p JOIN bookings b ON b.id = p.booking_id WHERE p.status = 'paid' GROUP BY month ORDER BY revenue DESC LIMIT 1",
+    "expected_answer": "2026-06 (June 2026) generated the most recognized revenue at $4,960.00.",
+    "answer_keywords": ["2026-06", "4960"]
+  },
+  {
+    "id": "most_booked_service",
+    "title": "Most-booked completed service",
+    "category": "service_mix",
+    "difficulty": "intermediate",
+    "question": "Which service had the most completed bookings?",
+    "expected_sql": "SELECT s.name AS service, COUNT(*) AS completed_bookings FROM bookings b JOIN services s ON s.id = b.service_id WHERE b.status = 'completed' GROUP BY s.id, s.name ORDER BY completed_bookings DESC, s.name LIMIT 1",
+    "expected_answer": "Full Detail had the most completed bookings with 11.",
+    "answer_keywords": ["full detail", "11"]
+  },
+  {
+    "id": "top_revenue_service",
+    "title": "Highest-revenue service",
+    "category": "service_mix",
+    "difficulty": "intermediate",
+    "question": "Which service generated the most recognized revenue?",
+    "expected_sql": "SELECT s.name AS service, ROUND(SUM(p.amount), 2) AS revenue FROM payments p JOIN bookings b ON b.id = p.booking_id JOIN services s ON s.id = b.service_id WHERE p.status = 'paid' GROUP BY s.id, s.name ORDER BY revenue DESC LIMIT 1",
+    "expected_answer": "Ceramic Coating generated the most recognized revenue at $7,500.00.",
+    "answer_keywords": ["ceramic coating", "7500"]
+  },
+  {
+    "id": "unique_paying_customers",
+    "title": "Unique paying customers",
+    "category": "customers",
+    "difficulty": "basic",
+    "question": "How many unique customers made at least one paid booking?",
+    "expected_sql": "SELECT COUNT(DISTINCT b.customer_id) AS paying_customers FROM payments p JOIN bookings b ON b.id = p.booking_id WHERE p.status = 'paid'",
+    "expected_answer": "12 unique customers made at least one paid booking.",
+    "answer_keywords": ["12", "customer"]
+  },
+  {
+    "id": "repeat_customers",
+    "title": "Repeat customers",
+    "category": "customers",
+    "difficulty": "intermediate",
+    "question": "How many customers completed at least two bookings?",
+    "expected_sql": "SELECT COUNT(*) AS repeat_customers FROM (SELECT customer_id FROM bookings WHERE status = 'completed' GROUP BY customer_id HAVING COUNT(*) >= 2)",
+    "expected_answer": "11 customers completed at least two bookings.",
+    "answer_keywords": ["11", "customer"]
+  },
+  {
+    "id": "repeat_customer_rate",
+    "title": "Repeat-customer rate",
+    "category": "customers",
+    "difficulty": "advanced",
+    "question": "Among customers with at least one completed booking, what percentage completed two or more?",
+    "expected_sql": "WITH counts AS (SELECT customer_id, COUNT(*) AS completed_count FROM bookings WHERE status = 'completed' GROUP BY customer_id) SELECT ROUND(100.0 * SUM(CASE WHEN completed_count >= 2 THEN 1 ELSE 0 END) / COUNT(*), 2) AS repeat_customer_rate_pct FROM counts",
+    "expected_answer": "The repeat-customer rate is 91.67%.",
+    "answer_keywords": ["91.67", "repeat"]
+  },
+  {
+    "id": "no_show_rate",
+    "title": "No-show rate",
+    "category": "operations",
+    "difficulty": "intermediate",
+    "question": "What percentage of all scheduled bookings were no-shows?",
+    "expected_sql": "SELECT ROUND(100.0 * SUM(CASE WHEN status = 'no_show' THEN 1 ELSE 0 END) / COUNT(*), 2) AS no_show_rate_pct FROM bookings",
+    "expected_answer": "The no-show rate is 11.11% of all scheduled bookings.",
+    "answer_keywords": ["11.11", "no-show"]
+  },
+  {
+    "id": "average_paid_ticket",
+    "title": "Average paid ticket",
+    "category": "revenue",
+    "difficulty": "basic",
+    "question": "What is the average amount of a paid transaction?",
+    "expected_sql": "SELECT ROUND(AVG(amount), 2) AS average_paid_ticket FROM payments WHERE status = 'paid'",
+    "expected_answer": "The average paid transaction is $463.75.",
+    "answer_keywords": ["463.75", "average"]
+  },
+  {
+    "id": "top_customer",
+    "title": "Top customer by revenue",
+    "category": "customers",
+    "difficulty": "intermediate",
+    "question": "Which customer generated the most recognized revenue, and how much?",
+    "expected_sql": "SELECT c.name AS customer, ROUND(SUM(p.amount), 2) AS revenue FROM payments p JOIN bookings b ON b.id = p.booking_id JOIN customers c ON c.id = b.customer_id WHERE p.status = 'paid' GROUP BY c.id, c.name ORDER BY revenue DESC LIMIT 1",
+    "expected_answer": "Ava Thompson generated the most recognized revenue at $3,200.00.",
+    "answer_keywords": ["ava thompson", "3200"]
+  },
+  {
+    "id": "lead_conversion_rate",
+    "title": "Lead conversion rate",
+    "category": "sales",
+    "difficulty": "intermediate",
+    "question": "What percentage of all leads converted to a booking?",
+    "expected_sql": "SELECT ROUND(100.0 * SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END) / COUNT(*), 2) AS conversion_rate_pct FROM leads",
+    "expected_answer": "The overall lead conversion rate is 62.50%.",
+    "answer_keywords": ["62.5", "conversion"]
+  },
+  {
+    "id": "open_leads",
+    "title": "Open lead backlog",
+    "category": "sales",
+    "difficulty": "basic",
+    "question": "How many leads are still open?",
+    "expected_sql": "SELECT COUNT(*) AS open_leads FROM leads WHERE status = 'open'",
+    "expected_answer": "4 leads are still open.",
+    "answer_keywords": ["4", "open"]
+  },
+  {
+    "id": "lead_to_booking_days",
+    "title": "Average lead-to-booking time",
+    "category": "sales",
+    "difficulty": "advanced",
+    "question": "For converted leads, what is the average number of days from lead creation to the scheduled booking date?",
+    "expected_sql": "SELECT ROUND(AVG(julianday(b.scheduled_at) - julianday(l.created_at)), 2) AS average_days FROM leads l JOIN bookings b ON b.id = l.converted_booking_id WHERE l.status = 'converted'",
+    "expected_answer": "Converted leads took an average of 7.07 days to reach their scheduled booking date.",
+    "answer_keywords": ["7.07", "day"]
+  },
+  {
+    "id": "top_technician_revenue",
+    "title": "Top technician by revenue",
+    "category": "operations",
+    "difficulty": "advanced",
+    "question": "Which technician is associated with the most recognized revenue, and how much?",
+    "expected_sql": "SELECT t.name AS technician, ROUND(SUM(p.amount), 2) AS revenue FROM payments p JOIN bookings b ON b.id = p.booking_id JOIN technicians t ON t.id = b.technician_id WHERE p.status = 'paid' GROUP BY t.id, t.name ORDER BY revenue DESC LIMIT 1",
+    "expected_answer": "Maya Chen is associated with the most recognized revenue at $7,300.00.",
+    "answer_keywords": ["maya chen", "7300"]
+  },
+  {
+    "id": "busiest_weekday",
+    "title": "Busiest weekday",
+    "category": "operations",
+    "difficulty": "advanced",
+    "question": "Which weekday had the most completed bookings? Return the weekday name and count.",
+    "expected_sql": "SELECT CASE strftime('%w', scheduled_at) WHEN '0' THEN 'Sunday' WHEN '1' THEN 'Monday' WHEN '2' THEN 'Tuesday' WHEN '3' THEN 'Wednesday' WHEN '4' THEN 'Thursday' WHEN '5' THEN 'Friday' ELSE 'Saturday' END AS weekday, COUNT(*) AS completed_bookings FROM bookings WHERE status = 'completed' GROUP BY strftime('%w', scheduled_at) ORDER BY completed_bookings DESC, weekday LIMIT 1",
+    "expected_answer": "Thursday was the busiest weekday with 7 completed bookings.",
+    "answer_keywords": ["thursday", "7"]
+  },
+  {
+    "id": "outstanding_balance",
+    "title": "Outstanding completed-work balance",
+    "category": "finance",
+    "difficulty": "intermediate",
+    "question": "What is the outstanding unpaid amount for completed bookings?",
+    "expected_sql": "SELECT ROUND(SUM(p.amount), 2) AS outstanding_balance FROM payments p JOIN bookings b ON b.id = p.booking_id WHERE p.status = 'unpaid' AND b.status = 'completed'",
+    "expected_answer": "The outstanding balance on completed bookings is $1,250.00.",
+    "answer_keywords": ["1250", "outstanding"]
+  },
+  {
+    "id": "best_lead_source",
+    "title": "Best lead source by conversion",
+    "category": "sales",
+    "difficulty": "advanced",
+    "question": "Which lead source has the highest conversion rate? Return the source, converted count, total count, and rate.",
+    "expected_sql": "SELECT source, SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END) AS converted_leads, COUNT(*) AS total_leads, ROUND(100.0 * SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END) / COUNT(*), 2) AS conversion_rate_pct FROM leads GROUP BY source ORDER BY conversion_rate_pct DESC, source LIMIT 1",
+    "expected_answer": "Referral has the highest conversion rate: 4 of 5 leads, or 80.00%.",
+    "answer_keywords": ["referral", "80"]
+  },
+  {
+    "id": "june_growth",
+    "title": "Month-over-month revenue growth",
+    "category": "revenue",
+    "difficulty": "advanced",
+    "question": "By what percentage did recognized revenue change from May 2026 to June 2026?",
+    "expected_sql": "WITH monthly AS (SELECT strftime('%Y-%m', b.scheduled_at) AS month, SUM(p.amount) AS revenue FROM payments p JOIN bookings b ON b.id = p.booking_id WHERE p.status = 'paid' AND b.scheduled_at >= '2026-05-01' AND b.scheduled_at < '2026-07-01' GROUP BY month), values_pivot AS (SELECT MAX(CASE WHEN month = '2026-05' THEN revenue END) AS may_revenue, MAX(CASE WHEN month = '2026-06' THEN revenue END) AS june_revenue FROM monthly) SELECT ROUND(100.0 * (june_revenue - may_revenue) / may_revenue, 2) AS growth_pct FROM values_pivot",
+    "expected_answer": "Recognized revenue increased 124.43% from May to June 2026.",
+    "answer_keywords": ["124.43", "increase"]
+  },
+  {
+    "id": "cancellation_rate",
+    "title": "Cancellation rate",
+    "category": "operations",
+    "difficulty": "intermediate",
+    "question": "What percentage of all scheduled bookings were cancelled?",
+    "expected_sql": "SELECT ROUND(100.0 * SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) / COUNT(*), 2) AS cancellation_rate_pct FROM bookings",
+    "expected_answer": "The cancellation rate is 8.89% of all scheduled bookings.",
+    "answer_keywords": ["8.89", "cancel"]
+  }
+]
