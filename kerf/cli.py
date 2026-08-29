@@ -14,6 +14,11 @@ def main() -> None:
     parser.add_argument("run", nargs="?", default="run")
     parser.add_argument("--provider", choices=["fixture", "openai"], default="fixture")
     parser.add_argument("--model", default=None)
+    parser.add_argument(
+        "--reasoning-effort",
+        choices=["none", "low", "medium", "high", "xhigh", "max"],
+        default=None,
+    )
     parser.add_argument("--case", action="append", dest="case_ids")
     args = parser.parse_args()
 
@@ -22,10 +27,11 @@ def main() -> None:
     initialize_history_database(settings.history_db_path)
     model = args.model or ("kerf-fixture-v1" if args.provider == "fixture" else settings.default_model)
     runner = EvaluationRunner(settings, HistoryStore(settings.history_db_path))
-    result = asyncio.run(runner.run(args.provider, model, args.case_ids))
+    result = asyncio.run(
+        runner.run(args.provider, model, args.case_ids, args.reasoning_effort)
+    )
     print(json.dumps({key: value for key, value in result.items() if key != "results"}, indent=2))
 
 
 if __name__ == "__main__":
     main()
-
