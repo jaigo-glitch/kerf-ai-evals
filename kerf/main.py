@@ -74,7 +74,12 @@ async def create_run(request: RunRequest) -> dict[str, object]:
     )
     try:
         runner = EvaluationRunner(settings, store())
-        return await runner.run(request.provider, model, request.case_ids)
+        return await runner.run(
+            request.provider,
+            model,
+            request.case_ids,
+            request.reasoning_effort,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -169,6 +174,5 @@ def _git_commit_count(project_root: Path) -> int:
 async def tracker() -> dict[str, object]:
     metrics = store().tracker_metrics()
     metrics["git_commits"] = _git_commit_count(settings.project_root)
-    metrics["github_repository_public"] = False
+    metrics["github_repository_public"] = True
     return metrics
-
