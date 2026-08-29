@@ -10,12 +10,14 @@ KERF runs versioned business questions against an AI model, executes the generat
 
 - FastAPI backend and interactive dashboard.
 - OpenAI Responses API adapter with strict structured output.
+- Manual GitHub Actions workflow for an auditable two-profile live comparison.
 - Deterministic fixture provider for zero-cost development and CI.
 - Twenty versioned evaluation cases across revenue, customers, sales, finance, and operations.
 - Synthetic SQLite business database with customers, bookings, payments, services, technicians, and leads.
 - Read-only SQL enforcement through lexical checks, SQLite read-only mode, an authorizer allowlist, a progress limit, and a row limit.
 - Automated result and answer-fact scoring.
 - Persistent run history and two-to-five-run model comparisons.
+- Per-run reasoning effort plus cached-input, reasoning-token, response-ID, latency, and cost evidence.
 - Markdown, CSV, and JSON report downloads.
 - Honest evidence tracker for runs, failures, models, cost, latency, beta users, releases, commits, and issues.
 - Feedback and issue-capture endpoints for the beta phase.
@@ -48,7 +50,30 @@ kerf run --provider openai --model gpt-5.6-luna
 
 The app uses the OpenAI **Responses API** and strict JSON Schema output. The implementation follows the official [text-generation](https://developers.openai.com/api/docs/guides/text) and [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs) guidance.
 
-The default model is `gpt-5.6-luna`, selected for repeatable, cost-sensitive eval runs. Cost estimates use the official [OpenAI API pricing](https://developers.openai.com/api/docs/pricing) values verified on August 27, 2026. Rates can be overridden through environment variables when pricing changes.
+The default model is `gpt-5.6-luna`, selected for repeatable, cost-sensitive eval runs. Cost estimates use the official [OpenAI API pricing](https://developers.openai.com/api/docs/pricing) values verified on August 29, 2026. Rates can be overridden through environment variables when pricing changes.
+
+Compare two live profiles locally and export the evidence bundle:
+
+```bash
+python scripts/run_live_comparison.py \
+  --model-a gpt-5.6-luna --effort-a low \
+  --model-b gpt-5.6-terra --effort-b low
+```
+
+The comparison command makes 40 paid API requests: 20 cases for each profile. It writes two
+run reports and one comparison report in both JSON and Markdown. A benchmark miss is recorded
+as evidence; authentication, API, parsing, or execution errors fail the command.
+
+## Run the live milestone in GitHub
+
+1. Open the repository's **Settings → Secrets and variables → Actions** page.
+2. Create the repository secret `OPENAI_API_KEY`.
+3. Open **Actions → live-eval → Run workflow**.
+4. Keep the default Luna-versus-Terra profiles or select different supported model IDs.
+5. Download the `kerf-live-comparison` artifact after the run completes.
+
+The live workflow is manual-only so a push or pull request can never create API charges. GitHub
+masks the secret and the workflow never prints, stores, or uploads it.
 
 Never paste or commit a real key into `.env.example`, source files, screenshots, issues, or reports.
 
@@ -143,7 +168,9 @@ A fixture run is always labeled as a fixture. It must never be described as an O
 
 - **Week 1 — complete:** backend, model adapter, 20 cases, fixture validation.
 - **Week 2 — complete:** synthetic business database, safe SQL, expected answers, scoring.
-- **Week 3 — MVP complete:** run history, comparisons, reports, docs, Git-ready repository.
+- **Week 3 — complete:** run history, comparisons, reports, docs, and public repository.
+- **Live milestone — engineering complete, execution pending:** repeatable two-profile workflow;
+  requires the repository secret and one manual run before any live-result claim is valid.
 - **Week 4 — requires real people:** recruit five testers, capture consented feedback, fix observed failures, and publish an evidence-backed case study.
 
 See [docs/BETA_PLAN.md](docs/BETA_PLAN.md) and [docs/CASE_STUDY_TEMPLATE.md](docs/CASE_STUDY_TEMPLATE.md).
@@ -157,4 +184,3 @@ Suggested current role title: **Founder & AI/Data Analyst — KERF (Pre-launch)*
 ## License
 
 MIT
-
