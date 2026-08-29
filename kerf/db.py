@@ -216,13 +216,16 @@ def initialize_history_database(path: Path) -> None:
                 completed_at TEXT,
                 provider TEXT NOT NULL,
                 model TEXT NOT NULL,
+                reasoning_effort TEXT NOT NULL DEFAULT 'low',
                 status TEXT NOT NULL,
                 case_count INTEGER NOT NULL DEFAULT 0,
                 passed_count INTEGER NOT NULL DEFAULT 0,
                 average_score REAL NOT NULL DEFAULT 0,
                 average_latency_ms REAL NOT NULL DEFAULT 0,
                 input_tokens INTEGER NOT NULL DEFAULT 0,
+                cached_input_tokens INTEGER NOT NULL DEFAULT 0,
                 output_tokens INTEGER NOT NULL DEFAULT 0,
+                reasoning_tokens INTEGER NOT NULL DEFAULT 0,
                 estimated_cost_usd REAL NOT NULL DEFAULT 0,
                 error TEXT
             );
@@ -258,8 +261,21 @@ def initialize_history_database(path: Path) -> None:
             );
             INSERT OR IGNORE INTO releases(version, released_at, notes)
             VALUES ('0.1.0', '2026-08-27', 'Initial local MVP: 20 eval cases, safe SQL, scoring, history, comparison, and reports.');
+            INSERT OR IGNORE INTO releases(version, released_at, notes)
+            VALUES ('0.2.0', '2026-08-29', 'Repeatable live two-profile evaluation workflow with reasoning, cached-token, response, latency, and cost evidence.');
             """
         )
+        columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(runs)").fetchall()
+        }
+        migrations = {
+            "reasoning_effort": "TEXT NOT NULL DEFAULT 'low'",
+            "cached_input_tokens": "INTEGER NOT NULL DEFAULT 0",
+            "reasoning_tokens": "INTEGER NOT NULL DEFAULT 0",
+        }
+        for column, definition in migrations.items():
+            if column not in columns:
+                connection.execute(f"ALTER TABLE runs ADD COLUMN {column} {definition}")
         connection.commit()
     finally:
         connection.close()
@@ -280,14 +296,22 @@ class HistoryStore:
         finally:
             connection.close()
 
-    def create_run(self, provider: str, model: str, case_count: int) -> int:
+    def create_run(
+        self,
+        provider: str,
+        model: str,
+        case_count: int,
+        reasoning_effort: str,
+    ) -> int:
         with self.connection() as connection:
             cursor = connection.execute(
                 """
-                INSERT INTO runs(created_at, provider, model, status, case_count)
-                VALUES (?, ?, ?, 'running', ?)
+                INSERT INTO runs(
+                    created_at, provider, model, reasoning_effort, status, case_count
+                )
+                VALUES (?, ?, ?, ?, 'running', ?)
                 """,
-                (utc_now(), provider, model, case_count),
+                (utc_now(), provider, model, reasoning_effort, case_count),
             )
             return int(cursor.lastrowid)
 
@@ -299,7 +323,9 @@ class HistoryStore:
             sum(result["latency_ms"] for result in results) / case_count if case_count else 0
         )
         input_tokens = sum(result["input_tokens"] for result in results)
+        cached_input_tokens = sum(result["cached_input_tokens"] for result in results)
         output_tokens = sum(result["output_tokens"] for result in results)
+        reasoning_tokens = sum(result["reasoning_tokens"] for result in results)
         cost = sum(result["estimated_cost_usd"] for result in results)
         with self.connection() as connection:
             connection.executemany(
@@ -313,7 +339,8 @@ class HistoryStore:
                 """
                 UPDATE runs
                 SET completed_at=?, status='completed', passed_count=?, average_score=?,
-                    average_latency_ms=?, input_tokens=?, output_tokens=?, estimated_cost_usd=?
+                    average_latency_ms=?, input_tokens=?, cached_input_tokens=?,
+                    output_tokens=?, reasoning_tokens=?, estimated_cost_usd=?
                 WHERE id=?
                 """,
                 (
@@ -322,7 +349,9 @@ class HistoryStore:
                     round(average_score, 2),
                     round(average_latency, 2),
                     input_tokens,
+                    cached_input_tokens,
                     output_tokens,
+                    reasoning_tokens,
                     round(cost, 8),
                     run_id,
                 ),
