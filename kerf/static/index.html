@@ -24,7 +24,7 @@
 
   <main id="top">
     <section class="hero">
-      <div class="eyebrow">AI RELIABILITY INFRASTRUCTURE / V0.1.0</div>
+      <div class="eyebrow">AI RELIABILITY INFRASTRUCTURE / V0.2.0</div>
       <h1>Measure what the<br><span>model misses.</span></h1>
       <p>KERF tests whether AI agents can query business data safely, calculate the right answer, and remain reliable across model releases.</p>
       <div class="hero-actions">
@@ -61,6 +61,15 @@
           </select>
           <label for="model">Model ID</label>
           <input id="model" value="kerf-fixture-v1" autocomplete="off">
+          <label for="reasoningEffort">Reasoning effort</label>
+          <select id="reasoningEffort">
+            <option value="none">None</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="xhigh">Extra high</option>
+            <option value="max">Maximum</option>
+          </select>
           <div id="liveNotice" class="notice">
             Fixture runs prove the evaluation system—not model quality. Live runs require an environment API key.
           </div>
@@ -129,4 +138,3 @@
   <script src="/static/app.js" defer></script>
 </body>
 </html>
-

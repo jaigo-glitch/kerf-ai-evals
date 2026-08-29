@@ -21,14 +21,16 @@ class EvaluationRunner:
         provider_name: str,
         model: str,
         case_ids: list[str] | None = None,
+        reasoning_effort: str | None = None,
     ) -> dict[str, Any]:
         cases = select_cases(case_ids)
         provider = build_provider(provider_name)
-        run_id = self.history.create_run(provider_name, model, len(cases))
+        resolved_effort = reasoning_effort or self.settings.reasoning_effort
+        run_id = self.history.create_run(provider_name, model, len(cases), resolved_effort)
         results: list[dict[str, Any]] = []
         try:
             for case in cases:
-                result = await self._run_case(case, provider, model)
+                result = await self._run_case(case, provider, model, resolved_effort)
                 results.append(result.model_dump(mode="json"))
             self.history.complete_run(run_id, results)
         except Exception as exc:
@@ -39,7 +41,13 @@ class EvaluationRunner:
             raise RuntimeError("Completed run could not be loaded")
         return run
 
-    async def _run_case(self, case: EvaluationCase, provider: Any, model: str) -> CaseResult:
+    async def _run_case(
+        self,
+        case: EvaluationCase,
+        provider: Any,
+        model: str,
+        reasoning_effort: str,
+    ) -> CaseResult:
         expected_rows = self.sql.execute(case.expected_sql)
         provider_result = None
         actual_rows: list[dict[str, Any]] | None = None
@@ -48,7 +56,12 @@ class EvaluationRunner:
         passed = False
         error: str | None = None
         try:
-            provider_result = await provider.generate(case, model, self.settings)
+            provider_result = await provider.generate(
+                case,
+                model,
+                self.settings,
+                reasoning_effort,
+            )
             actual_rows = self.sql.execute(provider_result.answer.sql)
             from .scoring import score_answer
 
@@ -75,8 +88,11 @@ class EvaluationRunner:
             detected_failures=failures,
             latency_ms=provider_result.latency_ms if provider_result else 0.0,
             input_tokens=provider_result.input_tokens if provider_result else 0,
+            cached_input_tokens=provider_result.cached_input_tokens if provider_result else 0,
             output_tokens=provider_result.output_tokens if provider_result else 0,
+            reasoning_tokens=provider_result.reasoning_tokens if provider_result else 0,
             estimated_cost_usd=provider_result.estimated_cost_usd if provider_result else 0.0,
+            response_id=provider_result.response_id if provider_result else None,
             error=error,
         )
 
@@ -96,6 +112,7 @@ def compare_runs(runs: list[dict[str, Any]]) -> dict[str, Any]:
                 {
                     "run_id": run["id"],
                     "model": run["model"],
+                    "reasoning_effort": run["reasoning_effort"],
                     "score": result["score"],
                     "passed": result["passed"],
                     "latency_ms": result["latency_ms"],
@@ -108,8 +125,9 @@ def compare_runs(runs: list[dict[str, Any]]) -> dict[str, Any]:
             {
                 key: run[key]
                 for key in (
-                    "id", "provider", "model", "case_count", "passed_count", "average_score",
-                    "average_latency_ms", "estimated_cost_usd", "created_at",
+                    "id", "provider", "model", "reasoning_effort", "case_count",
+                    "passed_count", "average_score", "average_latency_ms",
+                    "estimated_cost_usd", "created_at",
                 )
             }
             for run in runs
@@ -117,4 +135,3 @@ def compare_runs(runs: list[dict[str, Any]]) -> dict[str, Any]:
         "common_case_count": len(case_ids),
         "cases": comparison_rows,
     }
-

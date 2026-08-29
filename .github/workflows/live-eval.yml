@@ -1,0 +1,74 @@
+name: live-eval
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_a:
+        description: First OpenAI model ID
+        required: true
+        default: gpt-5.6-luna
+      effort_a:
+        description: First profile reasoning effort
+        required: true
+        type: choice
+        options: [none, low, medium, high]
+        default: low
+      model_b:
+        description: Second OpenAI model ID
+        required: true
+        default: gpt-5.6-terra
+      effort_b:
+        description: Second profile reasoning effort
+        required: true
+        type: choice
+        options: [none, low, medium, high]
+        default: low
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-eval
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -e '.[dev]'
+      - name: Verify secret is configured
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: test -n "$OPENAI_API_KEY"
+      - name: Run two-profile live comparison
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL_A: ${{ inputs.model_a }}
+          EFFORT_A: ${{ inputs.effort_a }}
+          MODEL_B: ${{ inputs.model_b }}
+          EFFORT_B: ${{ inputs.effort_b }}
+        run: >-
+          python scripts/run_live_comparison.py
+          --model-a "$MODEL_A"
+          --effort-a "$EFFORT_A"
+          --model-b "$MODEL_B"
+          --effort-b "$EFFORT_B"
+          --output-dir reports
+      - name: Upload live evaluation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: kerf-live-comparison
+          path: |
+            reports/live-comparison-*.json
+            reports/live-comparison-*.md
+            reports/run-*.json
+            reports/run-*.md
+          if-no-files-found: error
+          retention-days: 30
+

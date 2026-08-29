@@ -25,6 +25,9 @@ class Settings:
     input_price_per_million: float = float(
         os.getenv("KERF_INPUT_PRICE_PER_MILLION", "0.20")
     )
+    cached_input_price_per_million: float = float(
+        os.getenv("KERF_CACHED_INPUT_PRICE_PER_MILLION", "0.02")
+    )
     output_price_per_million: float = float(
         os.getenv("KERF_OUTPUT_PRICE_PER_MILLION", "1.20")
     )
@@ -35,4 +38,3 @@ class Settings:
 
 
 settings = Settings()
-

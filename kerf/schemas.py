@@ -29,6 +29,7 @@ class ModelAnswer(BaseModel):
 class RunRequest(BaseModel):
     provider: Literal["fixture", "openai"] = "fixture"
     model: str | None = None
+    reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] | None = None
     case_ids: list[str] | None = None
 
     @field_validator("case_ids")
@@ -66,6 +67,9 @@ class CaseResult(BaseModel):
     detected_failures: list[str]
     latency_ms: float
     input_tokens: int
+    cached_input_tokens: int
     output_tokens: int
+    reasoning_tokens: int
     estimated_cost_usd: float
+    response_id: str | None = None
     error: str | None = None

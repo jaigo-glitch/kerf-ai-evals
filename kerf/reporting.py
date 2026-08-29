@@ -17,12 +17,14 @@ def markdown_report(run: dict[str, Any]) -> str:
         "",
         f"- Provider: `{run['provider']}` ({provider_note})",
         f"- Model: `{run['model']}`",
+        f"- Reasoning effort: `{run['reasoning_effort']}`",
         f"- Created: {run['created_at']}",
         f"- Cases: {run['case_count']}",
         f"- Passed: {run['passed_count']}",
         f"- Average score: {run['average_score']:.2f}",
         f"- Average latency: {run['average_latency_ms']:.2f} ms",
         f"- Input/output tokens: {run['input_tokens']} / {run['output_tokens']}",
+        f"- Cached input/reasoning tokens: {run['cached_input_tokens']} / {run['reasoning_tokens']}",
         f"- Estimated cost: ${run['estimated_cost_usd']:.6f}",
         "",
         "## Case results",
@@ -67,8 +69,9 @@ def csv_report(run: dict[str, Any]) -> str:
     writer = csv.DictWriter(
         output,
         fieldnames=[
-            "run_id", "provider", "model", "case_id", "score", "passed", "latency_ms",
-            "input_tokens", "output_tokens", "estimated_cost_usd", "failures", "error",
+            "run_id", "provider", "model", "reasoning_effort", "case_id", "score", "passed",
+            "latency_ms", "input_tokens", "cached_input_tokens", "output_tokens",
+            "reasoning_tokens", "estimated_cost_usd", "response_id", "failures", "error",
         ],
     )
     writer.writeheader()
@@ -78,16 +81,19 @@ def csv_report(run: dict[str, Any]) -> str:
                 "run_id": run["id"],
                 "provider": run["provider"],
                 "model": run["model"],
+                "reasoning_effort": run["reasoning_effort"],
                 "case_id": result["case_id"],
                 "score": result["score"],
                 "passed": result["passed"],
                 "latency_ms": result["latency_ms"],
                 "input_tokens": result["input_tokens"],
+                "cached_input_tokens": result["cached_input_tokens"],
                 "output_tokens": result["output_tokens"],
+                "reasoning_tokens": result["reasoning_tokens"],
                 "estimated_cost_usd": result["estimated_cost_usd"],
+                "response_id": result["response_id"] or "",
                 "failures": "|".join(result["detected_failures"]),
                 "error": result["error"] or "",
             }
         )
     return output.getvalue()
-
