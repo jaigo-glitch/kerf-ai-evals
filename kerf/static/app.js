@@ -43,7 +43,7 @@ function runDetail(run) {
   $("#latestRun").classList.remove("empty-state");
   $("#latestRun").innerHTML = `
     <div class="run-top">
-      <div><div class="panel-kicker">RUN ${run.id} / ${fixture ? 'FIXTURE' : 'LIVE MODEL'}</div><h3>${escapeHtml(run.model)}</h3><p>${escapeHtml(run.created_at)}</p></div>
+      <div><div class="panel-kicker">RUN ${run.id} / ${fixture ? 'FIXTURE' : 'LIVE MODEL'}</div><h3>${escapeHtml(run.model)}</h3><p>${escapeHtml(run.reasoning_effort)} reasoning · ${escapeHtml(run.created_at)}</p></div>
       <div class="score-ring">${Number(run.average_score).toFixed(0)}</div>
     </div>
     <div class="run-stats">
@@ -110,7 +110,7 @@ $("#runButton").addEventListener("click", async () => {
   const button = $("#runButton"); const progress = $("#runProgress");
   button.disabled = true; progress.hidden = false;
   try {
-    const run = await api('/api/runs', { method: 'POST', body: JSON.stringify({ provider: $("#provider").value, model: $("#model").value }) });
+    const run = await api('/api/runs', { method: 'POST', body: JSON.stringify({ provider: $("#provider").value, model: $("#model").value, reasoning_effort: $("#reasoningEffort").value }) });
     runDetail(run); await refresh();
   } catch (error) { alert(error.message); }
   finally { button.disabled = false; progress.hidden = true; }
@@ -125,7 +125,7 @@ $("#compareButton").addEventListener("click", async () => {
     const comparison = await api(`/api/compare?run_ids=${[...state.selected].join(',')}`);
     $("#comparison").hidden = false;
     $("#comparison").innerHTML = `<h3>Model comparison</h3><div class="comparison-grid">${comparison.run_summaries.map(run => `
-      <div class="compare-card"><span>RUN ${run.id} / ${escapeHtml(run.model)}</span><b>${Number(run.average_score).toFixed(1)}</b><span>${run.passed_count}/${run.case_count} passed · ${Number(run.average_latency_ms).toFixed(1)} ms · ${formatMoney(run.estimated_cost_usd, 6)}</span></div>`).join('')}</div>`;
+      <div class="compare-card"><span>RUN ${run.id} / ${escapeHtml(run.model)} · ${escapeHtml(run.reasoning_effort)}</span><b>${Number(run.average_score).toFixed(1)}</b><span>${run.passed_count}/${run.case_count} passed · ${Number(run.average_latency_ms).toFixed(1)} ms · ${formatMoney(run.estimated_cost_usd, 6)}</span></div>`).join('')}</div>`;
   } catch (error) { alert(error.message); }
 });
 
@@ -140,4 +140,3 @@ $("#feedbackForm").addEventListener("submit", async event => {
 refresh().catch(error => {
   $("#healthDot").style.background = "var(--danger)"; $("#healthText").textContent = "Offline"; console.error(error);
 });
-
