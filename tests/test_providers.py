@@ -5,9 +5,9 @@ from types import SimpleNamespace
 import pytest
 
 from kerf.config import Settings
+from kerf.live import require_clean_execution
 from kerf.providers import OpenAIProvider, estimate_cost
 from kerf.schemas import EvaluationCase
-from scripts.run_live_comparison import require_clean_execution
 
 
 class FakeResponses:
