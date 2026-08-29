@@ -11,6 +11,7 @@ from typing import Any
 
 from kerf.config import settings
 from kerf.db import HistoryStore, initialize_business_database, initialize_history_database
+from kerf.live import require_clean_execution
 from kerf.reporting import json_report, markdown_report
 from kerf.runner import EvaluationRunner, compare_runs
 
@@ -62,22 +63,6 @@ def comparison_markdown(comparison: dict[str, Any]) -> str:
         ]
     )
     return "\n".join(lines)
-
-
-def require_clean_execution(run: dict[str, Any]) -> None:
-    errors = [
-        f"{result['case_id']}: {result['error']}"
-        for result in run["results"]
-        if result.get("error")
-    ]
-    if errors:
-        preview = "; ".join(errors[:3])
-        remaining = len(errors) - 3
-        suffix = f"; plus {remaining} more" if remaining > 0 else ""
-        raise RuntimeError(
-            f"Run {run['id']} ({run['model']}/{run['reasoning_effort']}) had "
-            f"{len(errors)} execution error(s): {preview}{suffix}"
-        )
 
 
 async def execute(args: argparse.Namespace) -> int:
