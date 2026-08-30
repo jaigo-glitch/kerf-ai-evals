@@ -1,0 +1,81 @@
+name: failure-reporter
+
+on:
+  workflow_run:
+    workflows: [ci, live-eval]
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  report:
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' ||
+      github.event.workflow_run.conclusion == 'timed_out' ||
+      github.event.workflow_run.conclusion == 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create failure record
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const run = context.payload.workflow_run;
+            const label = 'kerf-build-failure';
+
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: label,
+              });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: label,
+                color: 'B60205',
+                description: 'Automated record of a failed, timed-out, or cancelled KERF workflow',
+              });
+            }
+
+            const attempt = run.run_attempt ?? 1;
+            const marker = `<!-- kerf-workflow-run:${run.id}:attempt:${attempt} -->`;
+            const title = `[KERF build] ${run.name} #${run.run_number} — ${run.conclusion}`;
+            const body = [
+              marker,
+              'A monitored KERF workflow did not complete successfully.',
+              '',
+              `- **Workflow:** ${run.name}`,
+              `- **Branch:** ${run.head_branch ?? 'unknown'}`,
+              `- **Commit:** \`${run.head_sha}\``,
+              `- **Conclusion:** **${run.conclusion}**`,
+              `- **Attempt:** ${attempt}`,
+              `- **Run:** ${run.html_url}`,
+            ].join('\n');
+
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: label,
+              state: 'all',
+              per_page: 100,
+            });
+
+            if (existing.some((issue) => issue.body?.includes(marker))) {
+              core.info(`Failure record already exists for run ${run.id}, attempt ${attempt}.`);
+              return;
+            }
+
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: [label],
+            });
+
+            core.info(`Created failure record ${issue.data.html_url}`);
