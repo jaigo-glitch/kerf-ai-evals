@@ -15,6 +15,7 @@
     </a>
     <nav aria-label="Primary">
       <a href="#lab">Lab</a>
+      <a href="#baseline">Baseline</a>
       <a href="#cases">Cases</a>
       <a href="#history">History</a>
       <a href="/docs" target="_blank" rel="noreferrer">API</a>
@@ -24,7 +25,7 @@
 
   <main id="top">
     <section class="hero">
-      <div class="eyebrow">AI RELIABILITY INFRASTRUCTURE / V0.2.0</div>
+      <div class="eyebrow">AI RELIABILITY INFRASTRUCTURE / V0.3.0</div>
       <h1>Measure what the<br><span>model misses.</span></h1>
       <p>KERF tests whether AI agents can query business data safely, calculate the right answer, and remain reliable across model releases.</p>
       <div class="hero-actions">
@@ -46,9 +47,19 @@
       <div id="metricsGrid" class="metrics-grid" aria-live="polite"></div>
     </section>
 
+    <section id="baseline" class="section baseline-section" aria-labelledby="baseline-title">
+      <div class="section-heading">
+        <div><span class="section-index">02</span><h2 id="baseline-title">Live baseline</h2></div>
+        <p>Durable evidence from a successful paid model comparison—not a fixture or demo claim.</p>
+      </div>
+      <div id="baselinePanel" class="baseline-panel panel" aria-live="polite">
+        <div class="empty-state"><p>Loading verified live evidence…</p></div>
+      </div>
+    </section>
+
     <section id="lab" class="section lab-section" aria-labelledby="lab-title">
       <div class="section-heading">
-        <div><span class="section-index">02</span><h2 id="lab-title">Evaluation lab</h2></div>
+        <div><span class="section-index">03</span><h2 id="lab-title">Evaluation lab</h2></div>
         <p>Execute all cases against a deterministic fixture or a live model.</p>
       </div>
       <div class="lab-grid">
@@ -89,7 +100,7 @@
 
     <section id="cases" class="section" aria-labelledby="cases-title">
       <div class="section-heading">
-        <div><span class="section-index">03</span><h2 id="cases-title">Evaluation cases</h2></div>
+        <div><span class="section-index">04</span><h2 id="cases-title">Evaluation cases</h2></div>
         <div class="filter-row" role="group" aria-label="Filter evaluation cases">
           <button class="filter active" data-filter="all">All</button>
           <button class="filter" data-filter="revenue">Revenue</button>
@@ -103,7 +114,7 @@
 
     <section id="history" class="section" aria-labelledby="history-title">
       <div class="section-heading">
-        <div><span class="section-index">04</span><h2 id="history-title">Run history</h2></div>
+        <div><span class="section-index">05</span><h2 id="history-title">Run history</h2></div>
         <button id="compareButton" class="button ghost small" disabled>Compare selected</button>
       </div>
       <div class="table-shell">
@@ -117,7 +128,7 @@
 
     <section class="section feedback-section" aria-labelledby="feedback-title">
       <div class="section-heading">
-        <div><span class="section-index">05</span><h2 id="feedback-title">Beta evidence</h2></div>
+        <div><span class="section-index">06</span><h2 id="feedback-title">Beta evidence</h2></div>
         <p>Real testers only. Demo identities are never added to the count.</p>
       </div>
       <form id="feedbackForm" class="feedback-form panel">

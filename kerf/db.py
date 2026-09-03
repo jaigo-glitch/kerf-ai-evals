@@ -12,6 +12,27 @@ def utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
+def _summarize_results(results: list[dict[str, Any]]) -> dict[str, int | float]:
+    case_count = len(results)
+    average_score = sum(result["score"] for result in results) / case_count if case_count else 0
+    average_latency = (
+        sum(result["latency_ms"] for result in results) / case_count if case_count else 0
+    )
+    return {
+        "case_count": case_count,
+        "passed_count": sum(1 for result in results if result["passed"]),
+        "average_score": round(average_score, 2),
+        "average_latency_ms": round(average_latency, 2),
+        "input_tokens": sum(result["input_tokens"] for result in results),
+        "cached_input_tokens": sum(result["cached_input_tokens"] for result in results),
+        "output_tokens": sum(result["output_tokens"] for result in results),
+        "reasoning_tokens": sum(result["reasoning_tokens"] for result in results),
+        "estimated_cost_usd": round(
+            sum(result["estimated_cost_usd"] for result in results), 8
+        ),
+    }
+
+
 CUSTOMERS = [
     (1, "Noah Williams", "San Jose", "2025-11-14"),
     (2, "Mia Garcia", "Santa Clara", "2025-12-02"),
@@ -227,7 +248,9 @@ def initialize_history_database(path: Path) -> None:
                 output_tokens INTEGER NOT NULL DEFAULT 0,
                 reasoning_tokens INTEGER NOT NULL DEFAULT 0,
                 estimated_cost_usd REAL NOT NULL DEFAULT 0,
-                error TEXT
+                error TEXT,
+                origin TEXT NOT NULL DEFAULT 'local',
+                source_url TEXT
             );
             CREATE TABLE IF NOT EXISTS case_results (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -236,6 +259,12 @@ def initialize_history_database(path: Path) -> None:
                 payload_json TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_case_results_run ON case_results(run_id);
+            CREATE TABLE IF NOT EXISTS run_imports (
+                fingerprint TEXT PRIMARY KEY,
+                run_id INTEGER NOT NULL UNIQUE REFERENCES runs(id) ON DELETE CASCADE,
+                source_run_id TEXT,
+                imported_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS feedback (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 created_at TEXT NOT NULL,
@@ -263,6 +292,8 @@ def initialize_history_database(path: Path) -> None:
             VALUES ('0.1.0', '2026-08-27', 'Initial local MVP: 20 eval cases, safe SQL, scoring, history, comparison, and reports.');
             INSERT OR IGNORE INTO releases(version, released_at, notes)
             VALUES ('0.2.0', '2026-08-29', 'Repeatable live two-profile evaluation workflow with reasoning, cached-token, response, latency, and cost evidence.');
+            INSERT OR IGNORE INTO releases(version, released_at, notes)
+            VALUES ('0.3.0', '2026-09-03', 'First successful live baseline plus validated, deduplicating report import.');
             """
         )
         columns = {
@@ -272,6 +303,8 @@ def initialize_history_database(path: Path) -> None:
             "reasoning_effort": "TEXT NOT NULL DEFAULT 'low'",
             "cached_input_tokens": "INTEGER NOT NULL DEFAULT 0",
             "reasoning_tokens": "INTEGER NOT NULL DEFAULT 0",
+            "origin": "TEXT NOT NULL DEFAULT 'local'",
+            "source_url": "TEXT",
         }
         for column, definition in migrations.items():
             if column not in columns:
@@ -316,17 +349,7 @@ class HistoryStore:
             return int(cursor.lastrowid)
 
     def complete_run(self, run_id: int, results: list[dict[str, Any]]) -> None:
-        case_count = len(results)
-        passed_count = sum(1 for result in results if result["passed"])
-        average_score = sum(result["score"] for result in results) / case_count if case_count else 0
-        average_latency = (
-            sum(result["latency_ms"] for result in results) / case_count if case_count else 0
-        )
-        input_tokens = sum(result["input_tokens"] for result in results)
-        cached_input_tokens = sum(result["cached_input_tokens"] for result in results)
-        output_tokens = sum(result["output_tokens"] for result in results)
-        reasoning_tokens = sum(result["reasoning_tokens"] for result in results)
-        cost = sum(result["estimated_cost_usd"] for result in results)
+        summary = _summarize_results(results)
         with self.connection() as connection:
             connection.executemany(
                 "INSERT INTO case_results(run_id, case_id, payload_json) VALUES (?, ?, ?)",
@@ -345,17 +368,99 @@ class HistoryStore:
                 """,
                 (
                     utc_now(),
-                    passed_count,
-                    round(average_score, 2),
-                    round(average_latency, 2),
-                    input_tokens,
-                    cached_input_tokens,
-                    output_tokens,
-                    reasoning_tokens,
-                    round(cost, 8),
+                    summary["passed_count"],
+                    summary["average_score"],
+                    summary["average_latency_ms"],
+                    summary["input_tokens"],
+                    summary["cached_input_tokens"],
+                    summary["output_tokens"],
+                    summary["reasoning_tokens"],
+                    summary["estimated_cost_usd"],
                     run_id,
                 ),
             )
+
+    def import_completed_run(
+        self,
+        *,
+        provider: str,
+        model: str,
+        reasoning_effort: str,
+        created_at: str,
+        completed_at: str | None,
+        results: list[dict[str, Any]],
+        fingerprint: str,
+        source_run_id: str | None,
+        source_url: str | None,
+    ) -> tuple[dict[str, Any], bool]:
+        """Atomically import a completed report and deduplicate exact re-imports."""
+
+        summary = _summarize_results(results)
+        with self.connection() as connection:
+            existing = connection.execute(
+                "SELECT run_id FROM run_imports WHERE fingerprint=?", (fingerprint,)
+            ).fetchone()
+            if existing is not None:
+                run_id = int(existing["run_id"])
+                if source_url:
+                    connection.execute(
+                        """
+                        UPDATE runs SET source_url=?
+                        WHERE id=? AND (source_url IS NULL OR source_url='')
+                        """,
+                        (source_url, run_id),
+                    )
+                imported = False
+            else:
+                cursor = connection.execute(
+                    """
+                    INSERT INTO runs(
+                        created_at, completed_at, provider, model, reasoning_effort, status,
+                        case_count, passed_count, average_score, average_latency_ms,
+                        input_tokens, cached_input_tokens, output_tokens, reasoning_tokens,
+                        estimated_cost_usd, origin, source_url
+                    )
+                    VALUES (?, ?, ?, ?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'imported', ?)
+                    """,
+                    (
+                        created_at,
+                        completed_at or created_at,
+                        provider,
+                        model,
+                        reasoning_effort,
+                        summary["case_count"],
+                        summary["passed_count"],
+                        summary["average_score"],
+                        summary["average_latency_ms"],
+                        summary["input_tokens"],
+                        summary["cached_input_tokens"],
+                        summary["output_tokens"],
+                        summary["reasoning_tokens"],
+                        summary["estimated_cost_usd"],
+                        source_url,
+                    ),
+                )
+                run_id = int(cursor.lastrowid)
+                connection.executemany(
+                    "INSERT INTO case_results(run_id, case_id, payload_json) VALUES (?, ?, ?)",
+                    [
+                        (run_id, result["case_id"], json.dumps(result, separators=(",", ":")))
+                        for result in results
+                    ],
+                )
+                connection.execute(
+                    """
+                    INSERT INTO run_imports(fingerprint, run_id, source_run_id, imported_at)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (fingerprint, run_id, source_run_id, utc_now()),
+                )
+                imported = True
+
+        run = self.get_run(run_id)
+        if run is None:
+            raise RuntimeError("Imported run could not be loaded")
+        return run, imported
 
     def fail_run(self, run_id: int, error: str) -> None:
         with self.connection() as connection:

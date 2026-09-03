@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "id": "2026-09-03-luna-vs-terra-low",
+  "title": "First live 20-case model comparison",
+  "recorded_at": "2026-09-03T18:05:20+00:00",
+  "workflow": "live-eval",
+  "workflow_attempt": 2,
+  "actions_run_url": "https://github.com/jaigo-glitch/kerf-ai-evals/actions/runs/33786781766",
+  "artifact_name": "kerf-live-comparison",
+  "artifact_expires_on": "2026-10-03",
+  "synthetic_data": true,
+  "case_count": 20,
+  "profiles": [
+    {
+      "model": "gpt-5.6-luna",
+      "reasoning_effort": "low",
+      "passed_count": 6,
+      "average_score": 62.5,
+      "average_latency_ms": 3953.7,
+      "input_tokens": 6048,
+      "cached_input_tokens": 0,
+      "output_tokens": 6973,
+      "reasoning_tokens": 3694,
+      "estimated_cost_usd": 0.0095772
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "reasoning_effort": "low",
+      "passed_count": 8,
+      "average_score": 66.75,
+      "average_latency_ms": 5880.76,
+      "input_tokens": 6048,
+      "cached_input_tokens": 0,
+      "output_tokens": 7141,
+      "reasoning_tokens": 3784,
+      "estimated_cost_usd": 0.097788
+    }
+  ],
+  "findings": [
+    "Terra passed 8 of 20 cases; Luna passed 6 of 20.",
+    "Terra gained two passes and 4.25 score points, with about 1.49x the latency.",
+    "Terra's estimated cost was about 10.21x Luna's for this suite."
+  ]
+}

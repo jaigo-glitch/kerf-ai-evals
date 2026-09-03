@@ -11,8 +11,15 @@
 | Safe SQL executor | Enforces query policy and resource limits | Security boundary |
 | Scorer | Compares database rows and answer facts | Trusted evaluation code |
 | History database | Stores runs, feedback, issues, releases | Trusted local state |
+| Baseline registry | Stores validated summaries of successful live workflows | Trusted, versioned evidence |
 
 The synthetic business database and writable history database are deliberately separate files. A generated query is never run against the history database.
+
+GitHub Actions history is ephemeral, so successful live comparisons also produce two durable
+forms of evidence: a small versioned baseline summary for the dashboard and full JSON reports
+that can be imported into a writable history database. Imports validate every case-result field,
+recompute aggregate metrics, preserve source timestamps, and deduplicate exact reports by a
+SHA-256 fingerprint.
 
 ## Scoring
 
@@ -42,4 +49,3 @@ This design prevents persuasive prose from passing when the underlying query is 
 4. Add authentication, tenant isolation, encryption, retention controls, and audit-log integrity.
 5. Add adversarial prompt-injection and data-exfiltration cases.
 6. Pin live model snapshots after comparison runs establish a release baseline.
-

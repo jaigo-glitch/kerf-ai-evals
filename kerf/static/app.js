@@ -1,4 +1,4 @@
-const state = { health: null, cases: [], runs: [], selected: new Set() };
+const state = { health: null, cases: [], runs: [], baselines: [], selected: new Set() };
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const formatMoney = (value, digits = 4) => `$${Number(value || 0).toFixed(digits)}`;
@@ -38,12 +38,40 @@ function renderCases(filter = "all") {
     </article>`).join("");
 }
 
+function renderBaseline() {
+  const panel = $("#baselinePanel");
+  const baseline = state.baselines[0];
+  if (!baseline) {
+    panel.innerHTML = '<div class="empty-state"><h3>No live baseline yet</h3><p>Run the live comparison workflow, then commit its validated summary.</p></div>';
+    return;
+  }
+  panel.innerHTML = `
+    <div class="baseline-top">
+      <div><div class="panel-kicker">VERIFIED LIVE RUN / ${escapeHtml(baseline.recorded_at.slice(0, 10))}</div><h3>${escapeHtml(baseline.title)}</h3><p>${baseline.case_count} synthetic-data cases · workflow attempt ${baseline.workflow_attempt}</p></div>
+      <a class="button ghost small" href="${escapeHtml(baseline.actions_run_url)}" target="_blank" rel="noreferrer">Open Actions evidence</a>
+    </div>
+    <div class="baseline-profiles">${baseline.profiles.map(profile => `
+      <article class="baseline-profile">
+        <span>${escapeHtml(profile.model)} · ${escapeHtml(profile.reasoning_effort)} reasoning</span>
+        <div class="baseline-pass"><b>${profile.passed_count}</b><small>/ ${baseline.case_count} passed</small></div>
+        <dl>
+          <div><dt>Score</dt><dd>${Number(profile.average_score).toFixed(2)}</dd></div>
+          <div><dt>Latency</dt><dd>${Number(profile.average_latency_ms).toFixed(1)} ms</dd></div>
+          <div><dt>Cost</dt><dd>${formatMoney(profile.estimated_cost_usd, 6)}</dd></div>
+          <div><dt>Output tokens</dt><dd>${profile.output_tokens}</dd></div>
+        </dl>
+      </article>`).join('')}</div>
+    <div class="baseline-findings">${baseline.findings.map(finding => `<p>${escapeHtml(finding)}</p>`).join('')}</div>
+    <div class="baseline-foot">Artifact: ${escapeHtml(baseline.artifact_name)} · source artifact retained through ${escapeHtml(baseline.artifact_expires_on)} · summary remains versioned here.</div>`;
+}
+
 function runDetail(run) {
   const fixture = run.provider === "fixture";
+  const imported = run.origin === "imported";
   $("#latestRun").classList.remove("empty-state");
   $("#latestRun").innerHTML = `
     <div class="run-top">
-      <div><div class="panel-kicker">RUN ${run.id} / ${fixture ? 'FIXTURE' : 'LIVE MODEL'}</div><h3>${escapeHtml(run.model)}</h3><p>${escapeHtml(run.reasoning_effort)} reasoning · ${escapeHtml(run.created_at)}</p></div>
+      <div><div class="panel-kicker">RUN ${run.id} / ${fixture ? 'FIXTURE' : imported ? 'IMPORTED LIVE MODEL' : 'LIVE MODEL'}</div><h3>${escapeHtml(run.model)}</h3><p>${escapeHtml(run.reasoning_effort)} reasoning · ${escapeHtml(run.created_at)}</p></div>
       <div class="score-ring">${Number(run.average_score).toFixed(0)}</div>
     </div>
     <div class="run-stats">
@@ -54,6 +82,7 @@ function runDetail(run) {
     </div>
     <div class="notice" style="border-color:${fixture ? 'var(--warning)' : 'var(--good)'}">${fixture ? 'Deterministic fixture: the evaluation product ran, but no external model was called.' : 'Live API run: token, latency, cost, and failure evidence were recorded.'}</div>
     <div class="report-links">
+      ${run.source_url ? `<a class="button ghost small" href="${escapeHtml(run.source_url)}" target="_blank" rel="noreferrer">Source run</a>` : ''}
       <a class="button ghost small" href="/api/reports/${run.id}.md">Markdown report</a>
       <a class="button ghost small" href="/api/reports/${run.id}.csv">CSV results</a>
       <a class="button ghost small" href="/api/reports/${run.id}.json">JSON evidence</a>
@@ -89,13 +118,13 @@ function renderRuns() {
 }
 
 async function refresh() {
-  const [health, tracker, cases, runs] = await Promise.all([
-    api('/api/health'), api('/api/tracker'), api('/api/cases'), api('/api/runs')
+  const [health, tracker, cases, runs, baselines] = await Promise.all([
+    api('/api/health'), api('/api/tracker'), api('/api/cases'), api('/api/runs'), api('/api/baselines')
   ]);
-  state.health = health; state.cases = cases; state.runs = runs;
+  state.health = health; state.cases = cases; state.runs = runs; state.baselines = baselines;
   $("#healthDot").style.background = "var(--good)";
   $("#healthText").textContent = health.openai_configured ? "API ready" : "Fixture ready";
-  renderMetrics(tracker); renderCases(); renderRuns();
+  renderMetrics(tracker); renderCases(); renderRuns(); renderBaseline();
 }
 
 $("#provider").addEventListener("change", event => {

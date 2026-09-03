@@ -62,14 +62,58 @@ class CaseResult(BaseModel):
     model_answer: ModelAnswer | None
     model_sql_rows: list[dict[str, Any]] | None
     expected_sql_rows: list[dict[str, Any]]
-    score: float
+    score: float = Field(ge=0, le=100)
     passed: bool
     detected_failures: list[str]
-    latency_ms: float
-    input_tokens: int
-    cached_input_tokens: int
-    output_tokens: int
-    reasoning_tokens: int
-    estimated_cost_usd: float
+    latency_ms: float = Field(ge=0)
+    input_tokens: int = Field(ge=0)
+    cached_input_tokens: int = Field(ge=0)
+    output_tokens: int = Field(ge=0)
+    reasoning_tokens: int = Field(ge=0)
+    estimated_cost_usd: float = Field(ge=0)
     response_id: str | None = None
     error: str | None = None
+
+
+class RunImport(BaseModel):
+    """Validated shape of a completed JSON evidence report."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: int | str | None = None
+    created_at: str
+    completed_at: str | None = None
+    provider: Literal["fixture", "openai"]
+    model: str = Field(min_length=1, max_length=160)
+    reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"]
+    status: Literal["completed"]
+    results: list[CaseResult] = Field(min_length=1)
+
+
+class BaselineProfile(BaseModel):
+    model: str
+    reasoning_effort: str
+    passed_count: int = Field(ge=0)
+    average_score: float = Field(ge=0, le=100)
+    average_latency_ms: float = Field(ge=0)
+    input_tokens: int = Field(ge=0)
+    cached_input_tokens: int = Field(ge=0)
+    output_tokens: int = Field(ge=0)
+    reasoning_tokens: int = Field(ge=0)
+    estimated_cost_usd: float = Field(ge=0)
+
+
+class LiveBaseline(BaseModel):
+    schema_version: Literal[1]
+    id: str
+    title: str
+    recorded_at: str
+    workflow: str
+    workflow_attempt: int = Field(ge=1)
+    actions_run_url: str
+    artifact_name: str
+    artifact_expires_on: str
+    synthetic_data: Literal[True]
+    case_count: int = Field(gt=0)
+    profiles: list[BaselineProfile] = Field(min_length=2)
+    findings: list[str] = Field(default_factory=list)

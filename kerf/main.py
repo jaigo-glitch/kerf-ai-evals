@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__
+from .baselines import load_live_baselines
 from .cases import load_cases
 from .config import settings
 from .db import HistoryStore, initialize_business_database, initialize_history_database
@@ -25,6 +26,7 @@ async def lifespan(_app: FastAPI):
     initialize_business_database(settings.business_db_path)
     initialize_history_database(settings.history_db_path)
     load_cases()
+    load_live_baselines()
     yield
 
 
@@ -54,6 +56,7 @@ async def health() -> dict[str, object]:
         "evaluation_cases": len(load_cases()),
         "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
         "synthetic_data": True,
+        "live_baselines": len(load_live_baselines()),
     }
 
 
@@ -65,6 +68,11 @@ async def schema() -> dict[str, str]:
 @app.get("/api/cases")
 async def cases() -> list[dict[str, object]]:
     return [case.model_dump(mode="json") for case in load_cases()]
+
+
+@app.get("/api/baselines")
+async def baselines() -> list[dict[str, object]]:
+    return load_live_baselines()
 
 
 @app.post("/api/runs", status_code=201)

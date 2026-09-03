@@ -4,19 +4,21 @@
 
 KERF runs versioned business questions against an AI model, executes the generated SQL through a locked-down read-only layer, compares the returned rows with deterministic expected results, and records failures, latency, tokens, cost, and model version.
 
-> Status: pre-launch MVP. The included business, customers, transactions, and results are synthetic. No beta users or live-model claims are fabricated.
+> Status: pre-launch MVP with one successful live baseline. The included business, customers, and transactions are synthetic. No beta users or customer claims are fabricated.
 
 ## What works now
 
 - FastAPI backend and interactive dashboard.
 - OpenAI Responses API adapter with strict structured output.
 - Manual GitHub Actions workflow for an auditable two-profile live comparison.
+- Versioned live-baseline summaries that remain visible after temporary workflow artifacts expire.
 - Deterministic fixture provider for zero-cost development and CI.
 - Twenty versioned evaluation cases across revenue, customers, sales, finance, and operations.
 - Synthetic SQLite business database with customers, bookings, payments, services, technicians, and leads.
 - Read-only SQL enforcement through lexical checks, SQLite read-only mode, an authorizer allowlist, a progress limit, and a row limit.
 - Automated result and answer-fact scoring.
 - Persistent run history and two-to-five-run model comparisons.
+- Deduplicating import of completed workflow JSON reports into local run history.
 - Per-run reasoning effort plus cached-input, reasoning-token, response-ID, latency, and cost evidence.
 - Markdown, CSV, and JSON report downloads.
 - Honest evidence tracker for runs, failures, models, cost, latency, beta users, releases, commits, and issues.
@@ -72,6 +74,18 @@ as evidence; authentication, API, parsing, or execution errors fail the command.
 4. Keep the default Luna-versus-Terra profiles or select different supported model IDs.
 5. Download the `kerf-live-comparison` artifact after the run completes.
 
+Import its two full JSON run reports into a local KERF history database:
+
+```bash
+kerf import-run \
+  --report reports/run-1-gpt-5.6-luna-low.json \
+  --report reports/run-2-gpt-5.6-terra-low.json \
+  --source-url https://github.com/OWNER/REPOSITORY/actions/runs/RUN_ID
+```
+
+Exact re-imports are deduplicated. Imported runs keep their original timestamps and are labeled
+as imported live evidence in the dashboard.
+
 The live workflow is manual-only so a push or pull request can never create API charges. GitHub
 masks the secret and the workflow never prints, stores, or uploads it.
 
@@ -108,6 +122,7 @@ KERF does not accept the prose as proof. It executes the SQL and compares the re
 |---|---|---|
 | `GET` | `/api/health` | Service and live-key readiness |
 | `GET` | `/api/cases` | Twenty versioned eval definitions |
+| `GET` | `/api/baselines` | Versioned summaries of successful live comparisons |
 | `POST` | `/api/runs` | Execute a fixture or live-model run |
 | `GET` | `/api/runs` | Run history |
 | `GET` | `/api/runs/{id}` | Full run evidence |
@@ -169,8 +184,8 @@ A fixture run is always labeled as a fixture. It must never be described as an O
 - **Week 1 — complete:** backend, model adapter, 20 cases, fixture validation.
 - **Week 2 — complete:** synthetic business database, safe SQL, expected answers, scoring.
 - **Week 3 — complete:** run history, comparisons, reports, docs, and public repository.
-- **Live milestone — engineering complete, execution pending:** repeatable two-profile workflow;
-  requires the repository secret and one manual run before any live-result claim is valid.
+- **Live milestone — complete:** repeatable two-profile workflow plus a successful 20-case
+  Luna-versus-Terra baseline recorded on September 3, 2026.
 - **Week 4 — requires real people:** recruit five testers, capture consented feedback, fix observed failures, and publish an evidence-backed case study.
 
 See [docs/BETA_PLAN.md](docs/BETA_PLAN.md) and [docs/CASE_STUDY_TEMPLATE.md](docs/CASE_STUDY_TEMPLATE.md).

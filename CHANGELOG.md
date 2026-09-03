@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 — 2026-09-03
+
+- Published the first successful, source-linked live Luna-versus-Terra baseline in the dashboard.
+- Added validated, deduplicating import of completed JSON run reports into normal run history.
+- Labeled imported evidence and linked it back to its GitHub Actions source.
+- Marked the live milestone complete; the five-person beta milestone remains open.
+
 ## 0.2.0 — 2026-08-29
 
 - Added a manual GitHub Actions workflow for two-profile live model comparisons.
