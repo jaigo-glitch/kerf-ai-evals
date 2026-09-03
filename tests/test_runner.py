@@ -4,6 +4,7 @@ import pytest
 
 from kerf.config import Settings
 from kerf.db import HistoryStore, initialize_business_database, initialize_history_database
+from kerf.importing import import_run_report
 from kerf.reporting import csv_report, markdown_report
 from kerf.runner import EvaluationRunner, compare_runs
 
@@ -53,3 +54,33 @@ async def test_reports_and_comparison(tmp_path: Path) -> None:
     assert "Deterministic fixture" in markdown_report(first)
     assert "case_id" in csv_report(first)
 
+
+@pytest.mark.asyncio
+async def test_completed_report_import_is_deduplicated(tmp_path: Path) -> None:
+    source_config = temporary_settings(tmp_path / "source")
+    source_config.ensure_directories()
+    initialize_business_database(source_config.business_db_path)
+    initialize_history_database(source_config.history_db_path)
+    source_history = HistoryStore(source_config.history_db_path)
+    source_run = await EvaluationRunner(source_config, source_history).run(
+        "fixture", "import-test", ["revenue_total"]
+    )
+
+    target_path = tmp_path / "target" / "history.sqlite3"
+    initialize_history_database(target_path)
+    target_history = HistoryStore(target_path)
+    source_url = "https://github.com/example/project/actions/runs/123"
+
+    imported, was_new = import_run_report(target_history, source_run, source_url)
+    duplicate, duplicate_was_new = import_run_report(target_history, source_run, source_url)
+
+    assert was_new is True
+    assert duplicate_was_new is False
+    assert duplicate["id"] == imported["id"]
+    assert imported["origin"] == "imported"
+    assert imported["source_url"] == source_url
+    assert imported["passed_count"] == 1
+    assert len(target_history.list_runs()) == 1
+
+    with pytest.raises(ValueError, match="absolute http or https URL"):
+        import_run_report(target_history, source_run, "javascript:alert(1)")
